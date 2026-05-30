@@ -1,0 +1,41 @@
+# Запуск: docker-compose up -d
+# Проверка решений: ./scripts/verify-solutions.sh
+# PostgreSQL поднимает 4 БД (vehicle, racing, hotel, employees),
+# Flyway накатывает миграции из db*/migrations (solutions не применяются).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mephi
+      POSTGRES_PASSWORD: mephi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mephi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  flyway:
+    image: flyway/flyway:10-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: mephi
+      POSTGRES_PASSWORD: mephi
+    volumes:
+      - ./docker/migrate-all.sh:/flyway/migrate-all.sh:ro
+      - ./db1_vehicle/migrations:/flyway/sql/vehicle:ro
+      - ./db2_racing/migrations:/flyway/sql/racing:ro
+      - ./db3_hotel/migrations:/flyway/sql/hotel:ro
+      - ./db4_employees/migrations:/flyway/sql/employees:ro
+    entrypoint: ["/bin/sh", "/flyway/migrate-all.sh"]
+    restart: "no"
+
+volumes:
+  pgdata:
