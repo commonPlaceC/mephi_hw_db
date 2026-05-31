@@ -29,15 +29,15 @@ fi
 
 print_banner() {
   echo ""
-  echo -e "${C_CYAN}╔══════════════════════════════════════════════════════════════════════╗${C_RESET}"
-  echo -e "${C_CYAN}║${C_RESET}  ${C_BOLD}mephi_db — проверка решений SQL-задач${C_RESET}                              ${C_CYAN}║${C_RESET}"
-  echo -e "${C_CYAN}╚══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+  echo -e "${C_CYAN}════════════════════════════════════════════════════════════════════════${C_RESET}"
+  echo -e "${C_CYAN}  ${C_BOLD}mephi_db — проверка решений SQL-задач${C_RESET}"
+  echo -e "${C_CYAN}════════════════════════════════════════════════════════════════════════${C_RESET}"
   echo ""
 }
 
 log_info()  { echo -e "${C_CYAN}[i]${C_RESET} $*"; }
-log_ok()    { echo -e "${C_GREEN}[✓]${C_RESET} $*"; }
-log_err()   { echo -e "${C_RED}[✗]${C_RESET} $*"; }
+log_ok()    { echo -e "${C_GREEN}[OK]${C_RESET} $*"; }
+log_err()   { echo -e "${C_RED}[ERR]${C_RESET} $*"; }
 log_warn()  { echo -e "${C_YELLOW}[!]${C_RESET} $*"; }
 
 docker_compose() {
@@ -69,7 +69,7 @@ check_environment() {
   for db in vehicle racing hotel employees; do
     if ! docker_compose exec -T postgres psql -U "$PSQL_USER" -d "$db" -tAc \
         "SELECT 1 FROM flyway_schema_history WHERE success = true LIMIT 1;" 2>/dev/null | grep -q 1; then
-      log_err "База «${db}»: миграции Flyway не найдены."
+      log_err "База \"${db}\": миграции Flyway не найдены."
       echo "    Выполните: docker-compose up"
       exit 1
     fi
@@ -137,17 +137,17 @@ run_task() {
     return
   fi
 
-  echo "  ┌─ Результат запроса ─────────────────────────────────────────────────┐"
-  echo ""
+  echo "  Результат запроса:"
+  echo "  ┌────────────────────────────────────────────────────────────────────┐"
   if ! run_query_pretty "$db" "$sql_file"; then
+    echo "  └────────────────────────────────────────────────────────────────────┘"
     echo ""
     log_err "Ошибка при выполнении SQL."
     FAIL=$((FAIL + 1))
     rm -f "$actual_file"
     return
   fi
-  echo ""
-  echo "  └──────────────────────────────────────────────────────────────────────┘"
+  echo "  └────────────────────────────────────────────────────────────────────┘"
   echo ""
 
   if ! run_query_tsv "$db" "$sql_file" > "$actual_file"; then
@@ -169,9 +169,10 @@ run_task() {
   else
     log_err "Задача ${key}: результат НЕ совпадает с эталоном."
     echo ""
-    echo "  ┌─ Отличия (ожидалось → получено) ─────────────────────────────────────┐"
+    echo "  Отличия (ожидалось -> получено):"
+    echo "  ┌────────────────────────────────────────────────────────────────────┐"
     diff -u "$expected_file" "$actual_file" | sed 's/^/  │ /' || true
-    echo "  └──────────────────────────────────────────────────────────────────────┘"
+    echo "  └────────────────────────────────────────────────────────────────────┘"
     FAIL=$((FAIL + 1))
   fi
 
@@ -180,22 +181,22 @@ run_task() {
 
 print_summary() {
   echo ""
-  echo -e "${C_CYAN}╔══════════════════════════════════════════════════════════════════════╗${C_RESET}"
-  echo -e "${C_CYAN}║${C_RESET}  ${C_BOLD}ИТОГ${C_RESET}                                                                  ${C_CYAN}║${C_RESET}"
-  echo -e "${C_CYAN}╠══════════════════════════════════════════════════════════════════════╣${C_RESET}"
-  printf "${C_CYAN}║${C_RESET}  Всего задач:     %-3s                                              ${C_CYAN}║${C_RESET}\n" "$TOTAL"
-  printf "${C_CYAN}║${C_RESET}  Успешно:         ${C_GREEN}%-3s${C_RESET}                                              ${C_CYAN}║${C_RESET}\n" "$PASS"
-  printf "${C_CYAN}║${C_RESET}  С ошибками:      %-3s                                              ${C_CYAN}║${C_RESET}\n" "$FAIL"
-  echo -e "${C_CYAN}╚══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+  echo "════════════════════════════════════════════════════════════════════════"
+  echo "  ИТОГ"
+  echo "════════════════════════════════════════════════════════════════════════"
+  echo "  Всего задач:     ${TOTAL}"
+  echo "  Успешно:         ${PASS}"
+  echo "  С ошибками:      ${FAIL}"
+  echo "════════════════════════════════════════════════════════════════════════"
   echo ""
 
   if [[ "$FAIL" -eq 0 ]]; then
-    echo -e "${C_GREEN}${C_BOLD}  ✓ ВСЕ ОК: все ${PASS} решений выполнены корректно, данные и запросы в порядке.${C_RESET}"
+    echo "  ВСЕ OK: все ${PASS} решений выполнены корректно, данные и запросы в порядке."
     echo ""
     return 0
   fi
 
-  echo -e "${C_RED}${C_BOLD}  ✗ Есть расхождения: исправьте запросы или перезапустите docker-compose up.${C_RESET}"
+  echo "  ЕСТЬ РАСХОЖДЕНИЯ: исправьте запросы или перезапустите docker-compose up."
   echo ""
   return 1
 }
